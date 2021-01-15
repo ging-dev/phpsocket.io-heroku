@@ -1,0 +1,6 @@
+{
+    "require": {
+        "ext-pcntl": "*",
+        "workerman/phpsocket.io": "^1.1"
+    }
+}
