@@ -9,6 +9,7 @@ require_once __DIR__ . '/vendor/autoload.php';
 
 $io = new SocketIO(3000);
 $io->origins(getenv('DOMAIN'));
+$users = [];
 
 $io->on('workerStart', function() use ($io) {
     $inner_http_worker = new Worker('http://0.0.0.0:3001');
@@ -22,13 +23,16 @@ $io->on('workerStart', function() use ($io) {
     $inner_http_worker->listen();
 });
 
-$io->on('connection', function ($socket) use ($io) {
-    $socket->on('online', function ($name) use ($socket) {
-        if (!isset($socket->name)) {
+$io->on('connection', function ($socket) use ($io, $users) {
+    $socket->on('online', function ($name) use ($socket, $users) {
+        if (!in_array($name, $users)) {
             $socket->name = $name;
+            $users[] = $name;
             $socket->broadcast->emit('online', [$socket->name.' đã tham gia', 'success']);
+            $socket->broadcast->emit('online', [implode(', ', $users), 'info']);
         }
     });
+
     $socket->on('chat', function ($msg) use ($socket) {
         if (is_array($msg) && array_keys($msg) == ['data', 'signature']) {
             [$data, $signature] = array_values($msg);
@@ -38,8 +42,17 @@ $io->on('connection', function ($socket) use ($io) {
             }
         }
     });
-    $socket->on('disconnect', function () use ($socket) {
-        $socket->broadcast->emit('online', [$socket->name.' đã thoát', 'error']);
+
+    $socket->on('disconnect', function () use ($socket, $users) {
+        if (isset($socket->name)) {
+            if (($key = array_search($socket->name, $users)) !== false) {
+                unset($users[$key]);
+                if ($users) {
+                    $socket->broadcast->emit('online', [implode(', ', $users), 'info']);
+                }
+            }
+            $socket->broadcast->emit('online', [$socket->name.' đã thoát', 'error']);
+        }
     });
 });
 
