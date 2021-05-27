@@ -24,7 +24,7 @@ $io->on('workerStart', function() use ($io) {
 });
 
 $io->on('connection', function ($socket) use ($io, $users) {
-    $socket->on('online', function ($name) use ($socket, $users) {
+    $socket->on('online', function ($name) use ($socket, &$users) {
         if (!in_array($name, $users)) {
             $socket->name = $name;
             $users[] = $name;
@@ -43,7 +43,7 @@ $io->on('connection', function ($socket) use ($io, $users) {
         }
     });
 
-    $socket->on('disconnect', function () use ($socket, $users) {
+    $socket->on('disconnect', function () use ($socket, &$users) {
         if (isset($socket->name)) {
             if (($key = array_search($socket->name, $users)) !== false) {
                 unset($users[$key]);
